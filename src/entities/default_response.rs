@@ -7,6 +7,12 @@ pub enum DeletionResponseKind<T> {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub enum DeletionManyResponseKind<T> {
+    Deleted(i64),
+    NotDeleted(T, String),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub enum FetchResponseKind<T, U> {
     Found(T),
     NotFound(Option<U>),
