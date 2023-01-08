@@ -1,6 +1,6 @@
 [package]
 name = "clean-base"
-version = "0.2.1"
+version = "0.2.2-pre-release"
 edition = "2021"
 description = "A simple package with useful dependencies for Rust packages."
 license = "Apache-2.0"
@@ -9,9 +9,6 @@ repository = "https://github.com/sgelias/clean-base"
 readme = "./README.md"
 keywords = ["clen-architecture"]
 categories = ["microservices"]
-
-# See more keys and their definitions at 
-# https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 log = "0.4"

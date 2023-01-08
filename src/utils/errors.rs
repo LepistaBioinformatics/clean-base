@@ -1,6 +1,7 @@
 use log::{error, warn};
 use serde::{Deserialize, Serialize};
 use std::{
+    error::Error,
     fmt::{Display, Formatter, Result as FmtResult},
     str::FromStr,
 };
@@ -74,6 +75,8 @@ pub struct MappedErrors {
     msg: String,
     error_type: ErrorType,
 }
+
+impl Error for MappedErrors {}
 
 impl Display for MappedErrors {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
