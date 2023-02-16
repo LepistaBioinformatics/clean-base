@@ -1,3 +1,5 @@
+use crate::dtos::enums::PaginatedRecord;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -21,6 +23,7 @@ pub enum FetchResponseKind<T, U> {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum FetchManyResponseKind<T> {
     Found(Vec<T>),
+    FoundPaginated(PaginatedRecord<T>),
     NotFound,
 }
 
