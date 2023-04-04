@@ -70,7 +70,7 @@ impl FromStr for ErrorType {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct MappedErrors {
     msg: String,
     error_type: ErrorType,
