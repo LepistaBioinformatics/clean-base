@@ -1,4 +1,4 @@
-use crate::dtos::enums::PaginatedRecord;
+use crate::dtos::PaginatedRecord;
 
 use serde::{Deserialize, Serialize};
 
