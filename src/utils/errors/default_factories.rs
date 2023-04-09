@@ -1,11 +1,5 @@
 use super::base::{ErrorType, MappedErrors};
 
-// ? ---------------------------------------------------------------------------
-// ? FACTORY FUNCTIONS
-// Such functions should ve used over the raw `MappedErrors` struct to resolve
-// specific errors.
-// ? ---------------------------------------------------------------------------
-
 pub fn creation_err(
     msg: String,
     exp: Option<bool>,

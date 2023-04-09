@@ -9,8 +9,8 @@ use utoipa::ToSchema;
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum ParentEnum<T, U> {
-    Id(U),
     Record(T),
+    Id(U),
 }
 
 impl<T, U> Display for ParentEnum<T, U>
@@ -20,8 +20,8 @@ where
 {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            ParentEnum::Id(_) => write!(f, "id"),
             ParentEnum::Record(_) => write!(f, "record"),
+            ParentEnum::Id(_) => write!(f, "id"),
         }
     }
 }
