@@ -153,3 +153,32 @@ impl MappedErrors {
         MappedErrors { msg, error_type }
     }
 }
+
+// * ---------------------------------------------------------------------------
+// * TESTS
+// * ---------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_error_type() {
+        fn error_dispatcher() -> Result<(), super::MappedErrors> {
+            Err(super::MappedErrors::new(
+                "This is a test error".to_string(),
+                Some(true),
+                None,
+                super::ErrorType::UndefinedError,
+            ))
+        }
+
+        fn error_handler() -> Result<(), super::MappedErrors> {
+            error_dispatcher()?;
+            Ok(())
+        }
+
+        let response = error_handler().unwrap_err();
+
+        assert_eq!(response.error_type(), super::ErrorType::UndefinedError);
+    }
+}
