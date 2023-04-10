@@ -1,4 +1,5 @@
 use log::{error, warn};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::{
     error::Error,
@@ -98,6 +99,19 @@ impl FromStr for ErrorType {
     }
 }
 
+#[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum ErrorCodes {
+    Code(String),
+    Unmapped,
+}
+
+impl ErrorCodes {
+    pub fn default() -> ErrorCodes {
+        ErrorCodes::Unmapped
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MappedErrors {
     /// This field contains the error message.
@@ -106,13 +120,29 @@ pub struct MappedErrors {
     /// This field contains the error type. This field is used to standardize
     /// errors codes.
     error_type: ErrorType,
+
+    /// This field contains the error code. This field is used to standardize
+    /// errors evaluation in downstream applications.
+    code: ErrorCodes,
 }
 
 impl Error for MappedErrors {}
 
 impl Display for MappedErrors {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "({}): {}", self.error_type, self.msg)
+        let code_key = MappedErrors::code_key();
+        let error_type_key = MappedErrors::error_type_key();
+
+        let code_value = match self.code.to_owned() {
+            ErrorCodes::Code(code) => code,
+            ErrorCodes::Unmapped => String::from("none"),
+        };
+
+        write!(
+            f,
+            "[{}={},{}={}] {}",
+            code_key, code_value, error_type_key, self.error_type, self.msg
+        )
     }
 }
 
@@ -142,7 +172,7 @@ impl MappedErrors {
 
         if prev.is_some() {
             let updated_msg = format!(
-                "[Current error] {:?}: [Previous error] {:?}",
+                "[Current error] {:?}; [Previous error] {:?}",
                 msg,
                 &prev.unwrap().msg
             );
@@ -150,7 +180,53 @@ impl MappedErrors {
             return MappedErrors::new(updated_msg, exp, None, error_type);
         }
 
-        MappedErrors { msg, error_type }
+        MappedErrors {
+            msg,
+            error_type,
+            code: ErrorCodes::default(),
+        }
+    }
+
+    /// Set the error code of the current error.
+    pub fn with_code(mut self, code: String) -> MappedErrors {
+        if code == "none" {
+            self.code = ErrorCodes::Unmapped;
+            return self;
+        }
+
+        self.code = ErrorCodes::Code(code);
+        self
+    }
+
+    pub(self) fn code_key() -> &'static str {
+        "code"
+    }
+
+    pub(self) fn error_type_key() -> &'static str {
+        "error_type"
+    }
+
+    pub fn from_str_msg(msg: String) -> Self {
+        let pattern = Regex::new(
+            r"^\[code=([a-zA-Z0-9]+),error_type=([a-zA-Z-]+)\]\s(.+)$",
+        )
+        .unwrap();
+
+        if pattern.is_match(&msg) {
+            let capture = pattern.captures(&msg).unwrap();
+            let code = &capture[1];
+            let msg = capture[3].to_string();
+
+            let error_type = match ErrorType::from_str(&capture[2]) {
+                Ok(error_type) => error_type,
+                Err(_) => ErrorType::UndefinedError,
+            };
+
+            return MappedErrors::new(msg, None, None, error_type)
+                .with_code(code.to_string());
+        };
+
+        MappedErrors::new(msg, None, None, ErrorType::UndefinedError)
     }
 }
 
@@ -180,5 +256,38 @@ mod tests {
         let response = error_handler().unwrap_err();
 
         assert_eq!(response.error_type(), super::ErrorType::UndefinedError);
+    }
+
+    #[test]
+    fn test_error_msg() {
+        fn error_dispatcher() -> Result<(), super::MappedErrors> {
+            Err(super::MappedErrors::new(
+                "This is a test error".to_string(),
+                Some(true),
+                None,
+                super::ErrorType::UndefinedError,
+            ))
+        }
+
+        fn error_handler() -> Result<(), super::MappedErrors> {
+            error_dispatcher()?;
+            Ok(())
+        }
+
+        let response = error_handler().unwrap_err();
+
+        assert_eq!(
+            response.msg(),
+            "[code=none,error_type=undefined-error] This is a test error"
+        );
+    }
+
+    #[test]
+    fn test_from_msg() {
+        let msg = "[code=none,error_type=undefined-error] This is a test error";
+
+        let response = super::MappedErrors::from_str_msg(msg.to_string());
+
+        assert_eq!(response.msg(), msg);
     }
 }
