@@ -157,6 +157,11 @@ impl MappedErrors {
         self.to_string()
     }
 
+    /// This method returns the error code key of the current error.
+    pub fn code(&self) -> ErrorCodes {
+        self.code.to_owned()
+    }
+
     /// This method returns a new `MappedErrors` struct.
     pub(super) fn new(
         msg: String,
@@ -198,14 +203,17 @@ impl MappedErrors {
         self
     }
 
+    /// Set the error type of the current error.
     pub(self) fn code_key() -> &'static str {
         "code"
     }
 
+    /// Set the error type of the current error.
     pub(self) fn error_type_key() -> &'static str {
         "error_type"
     }
 
+    /// This method returns a new `MappedErrors` struct from a string.
     pub fn from_str_msg(msg: String) -> Self {
         let pattern = Regex::new(
             r"^\[code=([a-zA-Z0-9]+),error_type=([a-zA-Z-]+)\]\s(.+)$",
