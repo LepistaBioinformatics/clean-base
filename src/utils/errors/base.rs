@@ -178,6 +178,11 @@ impl MappedErrors {
         self.code.to_owned()
     }
 
+    /// This method returns the error code key of the current error.
+    pub fn expected(&self) -> bool {
+        self.expected.to_owned()
+    }
+
     // ? -----------------------------------------------------------------------
     // ? INSTANCE METHODS
     //
@@ -224,6 +229,7 @@ impl MappedErrors {
         self
     }
 
+    /// Set the error type of the current error.
     pub fn with_error_type(mut self, error_type: ErrorType) -> Self {
         self.error_type = error_type;
         self
