@@ -60,6 +60,12 @@ pub enum ErrorType {
     InvalidArgumentError,
 }
 
+impl ErrorType {
+    fn default() -> Self {
+        Self::UndefinedError
+    }
+}
+
 impl Display for ErrorType {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
@@ -115,11 +121,14 @@ impl ErrorCodes {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MappedErrors {
     /// This field contains the error message.
-    pub msg: String,
+    msg: String,
 
     /// This field contains the error type. This field is used to standardize
     /// errors codes.
     error_type: ErrorType,
+
+    /// If dispatched error is expected or not.
+    expected: bool,
 
     /// This field contains the error code. This field is used to standardize
     /// errors evaluation in downstream applications.
@@ -147,6 +156,13 @@ impl Display for MappedErrors {
 }
 
 impl MappedErrors {
+    // ? -----------------------------------------------------------------------
+    // ? INSTANCE METHODS
+    //
+    // Getters
+    //
+    // ? -----------------------------------------------------------------------
+
     /// This method returns the error type of the current error.
     pub fn error_type(&self) -> ErrorType {
         self.error_type
@@ -154,12 +170,75 @@ impl MappedErrors {
 
     /// This method returns the error message of the current error.
     pub fn msg(&self) -> String {
-        self.to_string()
+        self.msg.to_owned()
     }
 
     /// This method returns the error code key of the current error.
     pub fn code(&self) -> ErrorCodes {
         self.code.to_owned()
+    }
+
+    // ? -----------------------------------------------------------------------
+    // ? INSTANCE METHODS
+    //
+    // Modifiers
+    //
+    // ? -----------------------------------------------------------------------
+
+    /// Evoked when a Err return is desired.
+    pub fn as_error(self) -> Result<(), Self> {
+        Err(self)
+    }
+
+    /// Dispatches an log error indicating expected error.
+    pub fn with_exp_true(self) -> Self {
+        warn!("{:?}", &self.to_string());
+        self
+    }
+
+    /// Dispatches an log error indicating unexpected error.
+    pub fn with_exp_false(self) -> Self {
+        error!("Unexpected error: {}", &self.to_string());
+        self
+    }
+
+    /// Set the error code of the current error.
+    pub fn with_code(mut self, code: String) -> Self {
+        if code == "none" {
+            self.code = ErrorCodes::Unmapped;
+            return self;
+        }
+
+        self.code = ErrorCodes::Code(code);
+        self
+    }
+
+    pub fn with_previous(mut self, prev: MappedErrors) -> Self {
+        self.msg = format!(
+            "[CURRENT_ERROR] {:?}\n[PRECEDING_ERROR] {:?}",
+            self.msg, &prev.msg
+        );
+
+        self
+    }
+
+    pub fn with_error_type(mut self, error_type: ErrorType) -> Self {
+        self.error_type = error_type;
+        self
+    }
+
+    // ? -----------------------------------------------------------------------
+    // ? STRUCTURAL METHODS
+    // ? -----------------------------------------------------------------------
+
+    /// Build a anemic MappedError instance.
+    pub(super) fn default(msg: String) -> Self {
+        Self {
+            msg,
+            error_type: ErrorType::default(),
+            expected: false,
+            code: ErrorCodes::default(),
+        }
     }
 
     /// This method returns a new `MappedErrors` struct.
@@ -168,8 +247,10 @@ impl MappedErrors {
         exp: Option<bool>,
         prev: Option<MappedErrors>,
         error_type: ErrorType,
-    ) -> MappedErrors {
-        if !exp.unwrap_or(true) {
+    ) -> Self {
+        let exp = exp.unwrap_or(true);
+
+        if !exp {
             error!("Unexpected error: ({}){}", &error_type, &msg);
         } else {
             warn!("{:?}", &msg);
@@ -182,25 +263,15 @@ impl MappedErrors {
                 &prev.unwrap().msg
             );
 
-            return MappedErrors::new(updated_msg, exp, None, error_type);
+            return Self::new(updated_msg, Some(exp), None, error_type);
         }
 
-        MappedErrors {
+        Self {
             msg,
             error_type,
+            expected: exp,
             code: ErrorCodes::default(),
         }
-    }
-
-    /// Set the error code of the current error.
-    pub fn with_code(mut self, code: String) -> MappedErrors {
-        if code == "none" {
-            self.code = ErrorCodes::Unmapped;
-            return self;
-        }
-
-        self.code = ErrorCodes::Code(code);
-        self
     }
 
     /// Set the error type of the current error.
@@ -222,7 +293,7 @@ impl MappedErrors {
 
         if pattern.is_match(&msg) {
             let capture = pattern.captures(&msg).unwrap();
-            let code = &capture[1];
+            let code = capture[1].to_string();
             let msg = capture[3].to_string();
 
             let error_type = match ErrorType::from_str(&capture[2]) {
@@ -231,7 +302,7 @@ impl MappedErrors {
             };
 
             return MappedErrors::new(msg, None, None, error_type)
-                .with_code(code.to_string());
+                .with_code(code);
         };
 
         MappedErrors::new(msg, None, None, ErrorType::UndefinedError)
@@ -285,7 +356,7 @@ mod tests {
         let response = error_handler().unwrap_err();
 
         assert_eq!(
-            response.msg(),
+            response.to_string(),
             "[code=none,error_type=undefined-error] This is a test error"
         );
     }
@@ -296,6 +367,6 @@ mod tests {
 
         let response = super::MappedErrors::from_str_msg(msg.to_string());
 
-        assert_eq!(response.msg(), msg);
+        assert_eq!(response.to_string(), msg);
     }
 }
