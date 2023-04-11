@@ -1,6 +1,6 @@
 [package]
 name = "clean-base"
-version = "0.6.0"
+version = "0.6.1"
 edition = "2021"
 description = "A simple package with useful dependencies for Rust packages."
 license = "Apache-2.0"
