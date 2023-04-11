@@ -118,6 +118,15 @@ impl ErrorCode {
     }
 }
 
+impl Display for ErrorCode {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        match self {
+            ErrorCode::Code(code) => write!(f, "{}", code),
+            ErrorCode::Unmapped => write!(f, "unmapped"),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MappedErrors {
     /// This field contains the error message.
