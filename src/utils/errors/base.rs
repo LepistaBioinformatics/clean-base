@@ -107,14 +107,14 @@ impl FromStr for ErrorType {
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum ErrorCodes {
+pub enum ErrorCode {
     Code(String),
     Unmapped,
 }
 
-impl ErrorCodes {
-    pub fn default() -> ErrorCodes {
-        ErrorCodes::Unmapped
+impl ErrorCode {
+    pub fn default() -> ErrorCode {
+        ErrorCode::Unmapped
     }
 }
 
@@ -132,7 +132,7 @@ pub struct MappedErrors {
 
     /// This field contains the error code. This field is used to standardize
     /// errors evaluation in downstream applications.
-    code: ErrorCodes,
+    code: ErrorCode,
 }
 
 impl Error for MappedErrors {}
@@ -143,8 +143,8 @@ impl Display for MappedErrors {
         let error_type_key = MappedErrors::error_type_key();
 
         let code_value = match self.code.to_owned() {
-            ErrorCodes::Code(code) => code,
-            ErrorCodes::Unmapped => String::from("none"),
+            ErrorCode::Code(code) => code,
+            ErrorCode::Unmapped => String::from("none"),
         };
 
         write!(
@@ -174,7 +174,7 @@ impl MappedErrors {
     }
 
     /// This method returns the error code key of the current error.
-    pub fn code(&self) -> ErrorCodes {
+    pub fn code(&self) -> ErrorCode {
         self.code.to_owned()
     }
 
@@ -186,37 +186,39 @@ impl MappedErrors {
     // ? -----------------------------------------------------------------------
 
     /// Evoked when a Err return is desired.
-    pub fn as_error(self) -> Result<(), Self> {
+    pub fn as_error<T>(self) -> Result<T, Self> {
+        if let true = self.expected {
+            warn!("{:?}", &self.to_string());
+        } else {
+            error!("{:?}", &self.to_string());
+        }
+
         Err(self)
     }
 
-    /// Dispatches an log error indicating expected error.
-    pub fn with_exp_true(self) -> Self {
-        warn!("{:?}", &self.to_string());
-        self
-    }
-
     /// Dispatches an log error indicating unexpected error.
-    pub fn with_exp_false(self) -> Self {
-        error!("Unexpected error: {}", &self.to_string());
+    pub fn with_exp_false(mut self) -> Self {
+        self.expected = false;
         self
     }
 
     /// Set the error code of the current error.
     pub fn with_code(mut self, code: String) -> Self {
         if code == "none" {
-            self.code = ErrorCodes::Unmapped;
+            self.code = ErrorCode::Unmapped;
             return self;
         }
 
-        self.code = ErrorCodes::Code(code);
+        self.code = ErrorCode::Code(code);
         self
     }
 
+    /// Include previous mapped error in message
     pub fn with_previous(mut self, prev: MappedErrors) -> Self {
         self.msg = format!(
-            "[CURRENT_ERROR] {:?}\n[PRECEDING_ERROR] {:?}",
-            self.msg, &prev.msg
+            "[CURRENT_ERROR] {:?}; [PRECEDING_ERROR] {:?}",
+            self.msg,
+            &prev.to_string()
         );
 
         self
@@ -234,10 +236,10 @@ impl MappedErrors {
     /// Build a anemic MappedError instance.
     pub(super) fn default(msg: String) -> Self {
         Self {
-            msg,
+            msg: Self::sanitize_msg(msg),
             error_type: ErrorType::default(),
             expected: false,
-            code: ErrorCodes::default(),
+            code: ErrorCode::default(),
         }
     }
 
@@ -248,6 +250,7 @@ impl MappedErrors {
         prev: Option<MappedErrors>,
         error_type: ErrorType,
     ) -> Self {
+        let msg = Self::sanitize_msg(msg);
         let exp = exp.unwrap_or(true);
 
         if !exp {
@@ -258,7 +261,7 @@ impl MappedErrors {
 
         if prev.is_some() {
             let updated_msg = format!(
-                "[Current error] {:?}; [Previous error] {:?}",
+                "[CURRENT_ERROR] {:?}; [PRECEDING_ERROR] {:?}",
                 msg,
                 &prev.unwrap().msg
             );
@@ -270,18 +273,23 @@ impl MappedErrors {
             msg,
             error_type,
             expected: exp,
-            code: ErrorCodes::default(),
+            code: ErrorCode::default(),
         }
     }
 
     /// Set the error type of the current error.
-    pub(self) fn code_key() -> &'static str {
+    fn code_key() -> &'static str {
         "code"
     }
 
     /// Set the error type of the current error.
-    pub(self) fn error_type_key() -> &'static str {
+    fn error_type_key() -> &'static str {
         "error_type"
+    }
+
+    /// Remove invalid characters from message.
+    fn sanitize_msg(msg: String) -> String {
+        msg.as_str().replace(";", ",").to_string()
     }
 
     /// This method returns a new `MappedErrors` struct from a string.

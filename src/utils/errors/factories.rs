@@ -48,10 +48,10 @@ pub fn invalid_arg_err(msg: String) -> MappedErrors {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::utils::errors::base::ErrorType;
+    use crate::utils::errors::{base::ErrorType, ErrorCode};
 
     #[test]
-    fn test_creation_err() {
+    fn test_default_factories() {
         assert_eq!(
             creation_err("create".to_string()).error_type(),
             ErrorType::CreationError
@@ -91,5 +91,18 @@ mod test {
             invalid_arg_err("invalid_arg".to_string()).error_type(),
             ErrorType::InvalidArgumentError
         );
+    }
+
+    #[test]
+    fn test_creation_error_factory() {
+        fn result_function() -> Result<String, MappedErrors> {
+            creation_err("create".to_string())
+                .with_code("ID001".to_string())
+                .as_error()
+        }
+
+        let result = result_function().unwrap_err();
+
+        assert!(result.code() == ErrorCode::Code("ID001".to_string()));
     }
 }
