@@ -118,7 +118,7 @@ impl ErrorCode {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct MappedErrors {
     /// This field contains the error message.
     msg: String,
@@ -216,7 +216,7 @@ impl MappedErrors {
     /// Include previous mapped error in message
     pub fn with_previous(mut self, prev: MappedErrors) -> Self {
         self.msg = format!(
-            "[CURRENT_ERROR] {:?}; [PRECEDING_ERROR] {:?}",
+            "[CURRENT_ERROR] {}; [PRECEDING_ERROR] {}",
             self.msg,
             &prev.to_string()
         );
@@ -250,7 +250,6 @@ impl MappedErrors {
         prev: Option<MappedErrors>,
         error_type: ErrorType,
     ) -> Self {
-        let msg = Self::sanitize_msg(msg);
         let exp = exp.unwrap_or(true);
 
         if !exp {
@@ -374,7 +373,15 @@ mod tests {
         let msg = "[code=none,error_type=undefined-error] This is a test error";
 
         let response = super::MappedErrors::from_str_msg(msg.to_string());
+        let previous = response.to_owned();
 
         assert_eq!(response.to_string(), msg);
+
+        let with_previous = response.with_previous(previous);
+
+        let from_str_msg =
+            super::MappedErrors::from_str_msg(with_previous.msg());
+
+        assert_eq!(with_previous.msg(), from_str_msg.msg());
     }
 }
