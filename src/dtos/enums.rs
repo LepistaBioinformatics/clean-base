@@ -1,8 +1,8 @@
-#[deprecated(note = "Use `dtos::ChildrenEnum` import instead")]
-pub use super::children::ChildrenEnum;
+#[deprecated(note = "Import directly from `dtos` as `Children` instead")]
+pub use super::children::Children as ChildrenEnum;
 
-#[deprecated(note = "Use `dtos::PaginatedRecord` import instead")]
+#[deprecated(note = "Import as `dtos::PaginatedRecord` instead")]
 pub use super::paginated_record::PaginatedRecord;
 
-#[deprecated(note = "Use `dtos::ParentEnum` import instead")]
-pub use super::parent::ParentEnum;
+#[deprecated(note = "Import directly from `dtos` as `Parent` instead")]
+pub use super::parent::Parent as ParentEnum;

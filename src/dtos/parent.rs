@@ -8,20 +8,20 @@ use utoipa::ToSchema;
 /// key (Id option) or the true record (Record option).
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub enum ParentEnum<T, U> {
+pub enum Parent<T, U> {
     Record(T),
     Id(U),
 }
 
-impl<T, U> Display for ParentEnum<T, U>
+impl<T, U> Display for Parent<T, U>
 where
     T: Display,
     U: Display,
 {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            ParentEnum::Record(_) => write!(f, "record"),
-            ParentEnum::Id(_) => write!(f, "id"),
+            Parent::Record(_) => write!(f, "record"),
+            Parent::Id(_) => write!(f, "id"),
         }
     }
 }

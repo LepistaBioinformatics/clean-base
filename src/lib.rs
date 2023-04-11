@@ -8,17 +8,17 @@
 ///
 /// If you want to create two related structs with database representations and
 /// the relationship between them is established by a foreign key, you can use
-/// ParentEnum and ChildrenEnum.
+/// Parent and Children.
 ///
 /// ```
 /// struct Post {
 ///    id: i32,
 ///    title: String,
-///    comments: ChildrenEnum<Comment, i32>,
+///    comments: Children<Comment, i32>,
 /// }
 ///
 /// struct Comment {
-///     post: ParentEnum<Post, i32>,
+///     post: Parent<Post, i32>,
 ///     id: i32,
 ///     text: String,
 /// }
@@ -27,10 +27,9 @@
 ///
 /// Note that the relationship between Post and Comment is established by the
 /// foreign key `parent` in Comment. This foreign key is represented by the
-/// `ParentEnum` struct. The `ParentEnum` receives two generic parameters, the
-/// first one is the type of the record and the second one is the type of the
-/// primary key. In this case, the first parameter is Post and the second one is
-/// i32.
+/// `Parent` struct. The `Parent` receives two generic parameters, the first one
+/// is the type of the record and the second one is the type of the primary key.
+/// In this case, the first parameter is Post and the second one is i32.
 ///
 /// This, the instance representation of Post with comments as IDs would be:
 ///
@@ -38,25 +37,25 @@
 /// let post_with_comments_as_ids = Post {
 ///     id: 1,
 ///     title: "Hello World".to_string(),
-///     comments: ChildrenEnum::Ids(vec![1, 2, 3]),
+///     comments: Children::Ids(vec![1, 2, 3]),
 /// }
 ///
 /// let post_with_comments_as_records = Post {
 ///     id: 1,
 ///     title: "Hello World".to_string(),
-///     comments: ChildrenEnum::Records(vec![
+///     comments: Children::Records(vec![
 ///         Comment {
-///             post: ParentEnum::Id(1),
+///             post: Parent::Id(1),
 ///             id: 1,
 ///             text: "Hello World from comment 1".to_string(),
 ///         },
 ///         Comment {
-///             post: ParentEnum::Id(1),
+///             post: Parent::Id(1),
 ///             id: 2,
 ///             text: "Hello World from comment 2".to_string(),
 ///         },
 ///         Comment {
-///             post: ParentEnum::Id(1),
+///             post: Parent::Id(1),
 ///             id: 3,
 ///             text: "Hello World from comment 3".to_string(),
 ///         },
