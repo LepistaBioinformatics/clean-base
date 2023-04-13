@@ -248,7 +248,8 @@ impl MappedErrors {
     }
 
     /// Set the error code of the current error.
-    pub fn with_code(mut self, code: String) -> Self {
+    pub fn with_code(mut self, code: &str) -> Self {
+        let code = code.to_string();
         if code == "none" {
             return self;
         }
@@ -364,7 +365,7 @@ impl MappedErrors {
 
         if pattern.is_match(&msg) {
             let capture = pattern.captures(&msg).unwrap();
-            let code = capture[1].to_string();
+            let code = &capture[1];
             let msg = capture[3].to_string();
 
             let error_type = match ErrorType::from_str(&capture[2]) {
@@ -494,7 +495,7 @@ mod tests {
                 );
 
                 for code in codes.unwrap() {
-                    errors = errors.with_code(code);
+                    errors = errors.with_code(code.as_str());
                 }
 
                 return Err(errors);

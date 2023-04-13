@@ -97,8 +97,8 @@ mod test {
     fn test_creation_error_factory() {
         fn result_function() -> Result<String, MappedErrors> {
             creation_err("create".to_string())
-                .with_code("ID001".to_string())
-                .with_code("ID002".to_string())
+                .with_code("ID001")
+                .with_code("ID002")
                 .as_error()
         }
 
