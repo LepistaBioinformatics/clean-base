@@ -196,12 +196,22 @@ impl MappedErrors {
     /// expected or not.
     pub fn has_str_code(&self, code: &str) -> bool {
         if code == "none" {
-            return self.code == ErrorCode::Unmapped;
+            return false;
         }
 
         if let ErrorCode::Code(inner_code) = &self.code {
             return inner_code.as_str() == code;
         };
+
+        return false;
+    }
+
+    pub fn has_any_of_codes(&self, codes: Vec<&str>) -> bool {
+        for code in codes {
+            if self.has_str_code(code) {
+                return true;
+            }
+        }
 
         return false;
     }
@@ -432,6 +442,46 @@ mod tests {
 
         let response = error_handler().unwrap_err();
 
-        assert!(response.has_str_code("none"));
+        assert!(!response.has_str_code("none"));
+    }
+
+    #[test]
+    fn test_has_any_of_codes() {
+        fn error_dispatcher(
+            code: Option<String>,
+        ) -> Result<(), super::MappedErrors> {
+            if code.is_some() {
+                return Err(super::MappedErrors::new(
+                    "This is a test error".to_string(),
+                    Some(true),
+                    None,
+                    super::ErrorType::UndefinedError,
+                )
+                .with_code(code.unwrap()));
+            }
+
+            Err(super::MappedErrors::new(
+                "This is a test error".to_string(),
+                Some(true),
+                None,
+                super::ErrorType::UndefinedError,
+            ))
+        }
+
+        fn error_handler(
+            code: Option<String>,
+        ) -> Result<(), super::MappedErrors> {
+            error_dispatcher(code)?;
+            Ok(())
+        }
+
+        let none_response = error_handler(None).unwrap_err();
+        let some_response =
+            error_handler(Some("ID00001".to_string())).unwrap_err();
+
+        assert!(!none_response.has_any_of_codes(vec!["none", "ID00001"]));
+        assert!(!some_response.has_any_of_codes(vec!["none", "ID00002"]));
+        assert!(!some_response.has_any_of_codes(vec!["ID00002", "ID00003"]));
+        assert!(some_response.has_any_of_codes(vec!["none", "ID00001"]));
     }
 }
