@@ -192,6 +192,20 @@ impl MappedErrors {
         self.expected.to_owned()
     }
 
+    /// This method returns a boolean indicating if the current error is
+    /// expected or not.
+    pub fn has_str_code(&self, code: &str) -> bool {
+        if code == "none" {
+            return self.code == ErrorCode::Unmapped;
+        }
+
+        if let ErrorCode::Code(inner_code) = &self.code {
+            return inner_code.as_str() == code;
+        };
+
+        return false;
+    }
+
     // ? -----------------------------------------------------------------------
     // ? INSTANCE METHODS
     //
@@ -398,5 +412,26 @@ mod tests {
             super::MappedErrors::from_str_msg(with_previous.msg());
 
         assert_eq!(with_previous.msg(), from_str_msg.msg());
+    }
+
+    #[test]
+    fn test_has_str_code() {
+        fn error_dispatcher() -> Result<(), super::MappedErrors> {
+            Err(super::MappedErrors::new(
+                "This is a test error".to_string(),
+                Some(true),
+                None,
+                super::ErrorType::UndefinedError,
+            ))
+        }
+
+        fn error_handler() -> Result<(), super::MappedErrors> {
+            error_dispatcher()?;
+            Ok(())
+        }
+
+        let response = error_handler().unwrap_err();
+
+        assert!(response.has_str_code("none"));
     }
 }
