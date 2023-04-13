@@ -48,7 +48,7 @@ pub fn invalid_arg_err(msg: String) -> MappedErrors {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::utils::errors::{base::ErrorType, ErrorCode};
+    use crate::utils::errors::{base::ErrorType, ErrorCodes};
 
     #[test]
     fn test_default_factories() {
@@ -98,11 +98,18 @@ mod test {
         fn result_function() -> Result<String, MappedErrors> {
             creation_err("create".to_string())
                 .with_code("ID001".to_string())
+                .with_code("ID002".to_string())
                 .as_error()
         }
 
         let result = result_function().unwrap_err();
 
-        assert!(result.code() == ErrorCode::Code("ID001".to_string()));
+        assert!(
+            result.code() ==
+                ErrorCodes::Codes(vec![
+                    "ID001".to_string(),
+                    "ID002".to_string()
+                ])
+        );
     }
 }

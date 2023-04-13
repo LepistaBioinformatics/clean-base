@@ -107,22 +107,24 @@ impl FromStr for ErrorType {
 
 #[derive(Debug, Clone, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub enum ErrorCode {
-    Code(String),
+pub enum ErrorCodes {
+    Codes(Vec<String>),
     Unmapped,
 }
 
-impl ErrorCode {
-    pub fn default() -> ErrorCode {
-        ErrorCode::Unmapped
+impl ErrorCodes {
+    pub fn default() -> ErrorCodes {
+        ErrorCodes::Unmapped
     }
 }
 
-impl Display for ErrorCode {
+impl Display for ErrorCodes {
     fn fmt(&self, f: &mut Formatter) -> FmtResult {
         match self {
-            ErrorCode::Code(code) => write!(f, "{}", code),
-            ErrorCode::Unmapped => write!(f, "unmapped"),
+            ErrorCodes::Codes(codes) => {
+                write!(f, "{}", codes.join(MappedErrors::codes_delimiter()))
+            }
+            ErrorCodes::Unmapped => write!(f, "unmapped"),
         }
     }
 }
@@ -141,7 +143,7 @@ pub struct MappedErrors {
 
     /// This field contains the error code. This field is used to standardize
     /// errors evaluation in downstream applications.
-    code: ErrorCode,
+    codes: ErrorCodes,
 }
 
 impl Error for MappedErrors {}
@@ -151,15 +153,20 @@ impl Display for MappedErrors {
         let code_key = MappedErrors::code_key();
         let error_type_key = MappedErrors::error_type_key();
 
-        let code_value = match self.code.to_owned() {
-            ErrorCode::Code(code) => code,
-            ErrorCode::Unmapped => String::from("none"),
+        let code_value = match self.codes.to_owned() {
+            ErrorCodes::Codes(codes) => codes.join(Self::codes_delimiter()),
+            ErrorCodes::Unmapped => String::from("none"),
         };
 
         write!(
             f,
-            "[{}={},{}={}] {}",
-            code_key, code_value, error_type_key, self.error_type, self.msg
+            "[{}={}{}{}={}] {}",
+            code_key,
+            code_value,
+            Self::msg_paras_delimiter(),
+            error_type_key,
+            self.error_type,
+            self.msg
         )
     }
 }
@@ -183,8 +190,8 @@ impl MappedErrors {
     }
 
     /// This method returns the error code key of the current error.
-    pub fn code(&self) -> ErrorCode {
-        self.code.to_owned()
+    pub fn code(&self) -> ErrorCodes {
+        self.codes.to_owned()
     }
 
     /// This method returns the error code key of the current error.
@@ -199,8 +206,8 @@ impl MappedErrors {
             return false;
         }
 
-        if let ErrorCode::Code(inner_code) = &self.code {
-            return inner_code.as_str() == code;
+        if let ErrorCodes::Codes(inner_code) = &self.codes {
+            return inner_code.into_iter().any(|i| i.as_str() == code);
         };
 
         return false;
@@ -243,11 +250,19 @@ impl MappedErrors {
     /// Set the error code of the current error.
     pub fn with_code(mut self, code: String) -> Self {
         if code == "none" {
-            self.code = ErrorCode::Unmapped;
             return self;
         }
 
-        self.code = ErrorCode::Code(code);
+        let mut codes = match self.to_owned().codes {
+            ErrorCodes::Codes(codes) => codes,
+            ErrorCodes::Unmapped => vec![],
+        };
+
+        codes.push(code);
+        codes.sort();
+        codes.dedup();
+
+        self.codes = ErrorCodes::Codes(codes);
         self
     }
 
@@ -278,7 +293,7 @@ impl MappedErrors {
             msg: Self::sanitize_msg(msg),
             error_type: ErrorType::default(),
             expected: false,
-            code: ErrorCode::default(),
+            codes: ErrorCodes::default(),
         }
     }
 
@@ -311,13 +326,23 @@ impl MappedErrors {
             msg,
             error_type,
             expected: exp,
-            code: ErrorCode::default(),
+            codes: ErrorCodes::default(),
         }
     }
 
     /// Set the error type of the current error.
     fn code_key() -> &'static str {
-        "code"
+        "codes"
+    }
+
+    /// Set delimiter of the error codes.
+    pub(self) fn codes_delimiter() -> &'static str {
+        ","
+    }
+
+    /// Set delimiter of mapped errors string parameters.
+    pub(self) fn msg_paras_delimiter() -> &'static str {
+        " "
     }
 
     /// Set the error type of the current error.
@@ -333,7 +358,7 @@ impl MappedErrors {
     /// This method returns a new `MappedErrors` struct from a string.
     pub fn from_str_msg(msg: String) -> Self {
         let pattern = Regex::new(
-            r"^\[code=([a-zA-Z0-9]+),error_type=([a-zA-Z-]+)\]\s(.+)$",
+            r"^\[codes=([a-zA-Z0-9,]+)\serror_type=([a-zA-Z-]+)\]\s(.+)$",
         )
         .unwrap();
 
@@ -403,13 +428,23 @@ mod tests {
 
         assert_eq!(
             response.to_string(),
-            "[code=none,error_type=undefined-error] This is a test error"
+            format!(
+                "[{}=none{}{}=undefined-error] This is a test error",
+                super::MappedErrors::code_key(),
+                super::MappedErrors::msg_paras_delimiter(),
+                super::MappedErrors::error_type_key()
+            )
         );
     }
 
     #[test]
     fn test_from_msg() {
-        let msg = "[code=none,error_type=undefined-error] This is a test error";
+        let msg = format!(
+            "[{}=none{}{}=undefined-error] This is a test error",
+            super::MappedErrors::code_key(),
+            super::MappedErrors::msg_paras_delimiter(),
+            super::MappedErrors::error_type_key()
+        );
 
         let response = super::MappedErrors::from_str_msg(msg.to_string());
         let previous = response.to_owned();
@@ -448,16 +483,21 @@ mod tests {
     #[test]
     fn test_is_in() {
         fn error_dispatcher(
-            code: Option<String>,
+            codes: Option<Vec<String>>,
         ) -> Result<(), super::MappedErrors> {
-            if code.is_some() {
-                return Err(super::MappedErrors::new(
+            if codes.is_some() {
+                let mut errors = super::MappedErrors::new(
                     "This is a test error".to_string(),
                     Some(true),
                     None,
                     super::ErrorType::UndefinedError,
-                )
-                .with_code(code.unwrap()));
+                );
+
+                for code in codes.unwrap() {
+                    errors = errors.with_code(code);
+                }
+
+                return Err(errors);
             }
 
             Err(super::MappedErrors::new(
@@ -469,15 +509,18 @@ mod tests {
         }
 
         fn error_handler(
-            code: Option<String>,
+            codes: Option<Vec<String>>,
         ) -> Result<(), super::MappedErrors> {
-            error_dispatcher(code)?;
+            error_dispatcher(codes)?;
             Ok(())
         }
 
         let none_response = error_handler(None).unwrap_err();
-        let some_response =
-            error_handler(Some("ID00001".to_string())).unwrap_err();
+        let some_response = error_handler(Some(vec![
+            "ID00001".to_string(),
+            "ID00005".to_string(),
+        ]))
+        .unwrap_err();
 
         assert!(!none_response.is_in(vec!["none", "ID00001"]));
         assert!(!some_response.is_in(vec!["none", "ID00002"]));
