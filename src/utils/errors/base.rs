@@ -206,7 +206,7 @@ impl MappedErrors {
         return false;
     }
 
-    pub fn has_any_of_codes(&self, codes: Vec<&str>) -> bool {
+    pub fn is_in(&self, codes: Vec<&str>) -> bool {
         for code in codes {
             if self.has_str_code(code) {
                 return true;
@@ -446,7 +446,7 @@ mod tests {
     }
 
     #[test]
-    fn test_has_any_of_codes() {
+    fn test_is_in() {
         fn error_dispatcher(
             code: Option<String>,
         ) -> Result<(), super::MappedErrors> {
@@ -479,9 +479,9 @@ mod tests {
         let some_response =
             error_handler(Some("ID00001".to_string())).unwrap_err();
 
-        assert!(!none_response.has_any_of_codes(vec!["none", "ID00001"]));
-        assert!(!some_response.has_any_of_codes(vec!["none", "ID00002"]));
-        assert!(!some_response.has_any_of_codes(vec!["ID00002", "ID00003"]));
-        assert!(some_response.has_any_of_codes(vec!["none", "ID00001"]));
+        assert!(!none_response.is_in(vec!["none", "ID00001"]));
+        assert!(!some_response.is_in(vec!["none", "ID00002"]));
+        assert!(!some_response.is_in(vec!["ID00002", "ID00003"]));
+        assert!(some_response.is_in(vec!["none", "ID00001"]));
     }
 }
