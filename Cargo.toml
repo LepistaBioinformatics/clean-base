@@ -16,3 +16,10 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 utoipa = { version = "3", features = ["uuid"] }
 regex = "1"
+
+[tool.commitizen]
+version = "1.0.0"
+version_files = ["Cargo.toml"]
+name = "cz_conventional_commits"
+tag_format = "v$version"
+bump_message = "bump: $current_version → $new_version [skip-ci]"
