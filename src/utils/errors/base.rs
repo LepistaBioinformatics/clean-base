@@ -242,8 +242,8 @@ impl MappedErrors {
     }
 
     /// Dispatches an log error indicating unexpected error.
-    pub fn with_exp_false(mut self) -> Self {
-        self.expected = false;
+    pub fn with_exp_true(mut self) -> Self {
+        self.expected = true;
         self
     }
 
